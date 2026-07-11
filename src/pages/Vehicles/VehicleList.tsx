@@ -293,7 +293,7 @@ export default function VehicleList() {
         }}
       >
         <Typography variant="h4" sx={{ fontWeight: 700 }}>
-          Customers & Vehicles
+          Vehicle List
         </Typography>
         <Stack direction="row" spacing={1}>
           <Button variant="outlined" startIcon={<Upload />} onClick={() => importInputRef.current?.click()}>
