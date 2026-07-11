@@ -128,12 +128,22 @@ export default function VehicleList() {
         if (c.mobile) mobileToCustomer.set(c.mobile, c);
       }
 
-      const batch = writeBatch(db);
       const newCustomers = new Map<string, string>();
-      const vehicleCounts = new Map<string, number>();
+      let batch = writeBatch(db);
+      let ops = 0;
       let imported = 0;
+      let yielded = 0;
+
+      const yieldToUi = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+      const flushBatch = async () => {
+        await batch.commit();
+        batch = writeBatch(db);
+        ops = 0;
+      };
 
       for (const row of rows) {
+        if (++yielded % 100 === 0) await yieldToUi();
         const regNo = row['Reg. No'] || row['Registration Number'] || row['registrationNumber'] || '';
         if (!regNo.trim()) continue;
 
@@ -147,11 +157,10 @@ export default function VehicleList() {
 
         if (cachedId) {
           customerId = cachedId;
-          vehicleCounts.set(customerId, (vehicleCounts.get(customerId) || 0) + 1);
         } else if (existing) {
           customerId = existing.id;
-          vehicleCounts.set(customerId, (vehicleCounts.get(customerId) || 0) + 1);
-        } else {
+        } else if (customerName || customerMobile) {
+          if (ops >= 400) await flushBatch();
           const customerRef = doc(collection(db, 'customers'));
           customerId = customerRef.id;
           batch.set(customerRef, {
@@ -162,8 +171,13 @@ export default function VehicleList() {
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
           });
+          ops++;
           if (customerMobile) newCustomers.set(customerMobile, customerId);
+        } else {
+          customerId = 'unknown';
         }
+
+        if (ops >= 450) await flushBatch();
 
         const vehicleRef = doc(collection(db, 'vehicles'));
         batch.set(vehicleRef, {
@@ -175,14 +189,11 @@ export default function VehicleList() {
           dcDate: row['DC Date'] || row['dcDate'] || '',
           createdAt: serverTimestamp(),
         });
+        ops++;
         imported++;
       }
 
-      for (const [cid, count] of vehicleCounts) {
-        batch.update(doc(db, 'customers', cid), { vehicleCount: increment(count) });
-      }
-
-      await batch.commit();
+      if (ops > 0) await flushBatch();
       enqueueSnackbar(`${imported} vehicles imported successfully`, { variant: 'success' });
     } catch (err) {
       console.error('Import failed:', err);
