@@ -60,7 +60,6 @@ export default function JobCardForm() {
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [filteredVehicles, setFilteredVehicles] = useState<Vehicle[]>([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -105,7 +104,6 @@ export default function JobCardForm() {
         if (!snap.exists()) return;
         const data = snap.data() as JobCard;
         setDate(formatDateInput(data.date));
-        setSelectedCustomer(customers.find((c) => c.id === data.customerId) || null);
         setSelectedVehicle(vehicles.find((v) => v.id === data.vehicleId) || null);
         setOdometerReading(String(data.odometerReading || ''));
         setComplaintDescription(data.complaintDescription || '');
@@ -132,12 +130,12 @@ export default function JobCardForm() {
   }, [id, isEdit]);
 
   useEffect(() => {
-    if (selectedCustomer) {
-      setFilteredVehicles(vehicles.filter((v) => v.customerId === selectedCustomer.id));
+    if (selectedVehicle) {
+      setSelectedCustomer(customers.find((c) => c.id === selectedVehicle.customerId) || null);
     } else {
-      setFilteredVehicles([]);
+      setSelectedCustomer(null);
     }
-  }, [selectedCustomer, vehicles]);
+  }, [selectedVehicle, customers]);
 
   function formatDateInput(val: unknown): string {
     if (!val) return '';
@@ -230,8 +228,8 @@ export default function JobCardForm() {
   };
 
   const handleSave = async () => {
-    if (!selectedCustomer || !selectedVehicle) {
-      enqueueSnackbar('Please select customer and vehicle', { variant: 'error' });
+    if (!selectedVehicle) {
+      enqueueSnackbar('Please select a vehicle', { variant: 'error' });
       return;
     }
     setSaving(true);
@@ -308,26 +306,12 @@ export default function JobCardForm() {
               </Grid>
               <Grid size={12}>
                 <Autocomplete
-                  options={customers}
-                  getOptionLabel={(o) => `${o.name} (${o.mobile})`}
-                  value={selectedCustomer}
-                  onChange={(_, v) => {
-                    setSelectedCustomer(v);
-                    setSelectedVehicle(null);
-                  }}
-                  renderInput={(params) => <TextField {...params} label="Customer *" />}
-                  fullWidth
-                />
-              </Grid>
-              <Grid size={12}>
-                <Autocomplete
-                  options={filteredVehicles}
-                  getOptionLabel={(o) => `${o.registrationNumber} - ${o.brand} ${o.model}`}
+                  options={vehicles}
+                  getOptionLabel={(o) => `${o.registrationNumber} - ${o.brand} ${o.model} (${o.chassisNumber || ''})`}
                   value={selectedVehicle}
                   onChange={(_, v) => setSelectedVehicle(v)}
                   renderInput={(params) => <TextField {...params} label="Vehicle *" />}
                   fullWidth
-                  disabled={!selectedCustomer}
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
