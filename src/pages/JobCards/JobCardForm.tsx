@@ -228,7 +228,7 @@ export default function JobCardForm() {
   };
 
   const handleSave = async () => {
-    if (!selectedVehicle) {
+    if (!selectedVehicle || !selectedCustomer) {
       enqueueSnackbar('Please select a vehicle', { variant: 'error' });
       return;
     }
