@@ -1,0 +1,180 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin';
+    }
+
+    function isManager() {
+      return isAuthenticated()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Manager';
+    }
+
+    function isServiceAdvisor() {
+      return isAuthenticated()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ServiceAdvisor';
+    }
+
+    function isAccounts() {
+      return isAuthenticated()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Accounts';
+    }
+
+    function isStoreKeeper() {
+      return isAuthenticated()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'StoreKeeper';
+    }
+
+    function isTechnician() {
+      return isAuthenticated()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Technician';
+    }
+
+    function isAdminOrManager() {
+      return isAdmin() || isManager();
+    }
+
+    function isStaff() {
+      return isAuthenticated() && (
+        isAdmin() || isManager() || isServiceAdvisor() || isAccounts()
+        || isStoreKeeper() || isTechnician()
+      );
+    }
+
+    function hasPermission(module, action) {
+      let user = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      let role = user.data.role;
+      let permissions = user.data.permissions;
+      if (role == 'Admin') return true;
+      if (permissions != null && permissions[module] != null) {
+        return permissions[module][action] == true;
+      }
+      return false;
+    }
+
+    match /users/{userId} {
+      allow read: if isStaff();
+      allow create: if isAdminOrManager();
+      allow update: if request.auth.uid == userId || isAdminOrManager();
+      allow delete: if isAdmin();
+    }
+
+    match /customers/{customerId} {
+      allow read: if isStaff();
+      allow create: if hasPermission('customers', 'create');
+      allow update: if hasPermission('customers', 'update');
+      allow delete: if hasPermission('customers', 'delete');
+    }
+
+    match /vehicles/{vehicleId} {
+      allow read: if isStaff();
+      allow create: if hasPermission('vehicles', 'create');
+      allow update: if hasPermission('vehicles', 'update');
+      allow delete: if hasPermission('vehicles', 'delete');
+    }
+
+    match /jobCards/{jobCardId} {
+      allow read: if isStaff();
+      allow create: if hasPermission('jobCards', 'create');
+      allow update: if hasPermission('jobCards', 'update');
+      allow delete: if hasPermission('jobCards', 'delete');
+    }
+
+    match /inventory/{itemId} {
+      allow read: if isStaff();
+      allow create: if hasPermission('inventory', 'create');
+      allow update: if hasPermission('inventory', 'update');
+      allow delete: if hasPermission('inventory', 'delete');
+    }
+
+    match /suppliers/{supplierId} {
+      allow read: if isStaff();
+      allow create: if hasPermission('suppliers', 'create');
+      allow update: if hasPermission('suppliers', 'update');
+      allow delete: if hasPermission('suppliers', 'delete');
+    }
+
+    match /purchases/{purchaseId} {
+      allow read: if isStaff();
+      allow create: if hasPermission('purchases', 'create');
+      allow update: if hasPermission('purchases', 'update');
+      allow delete: if hasPermission('purchases', 'delete');
+    }
+
+    match /invoices/{invoiceId} {
+      allow read: if isStaff();
+      allow create: if hasPermission('invoices', 'create');
+      allow update: if hasPermission('invoices', 'update');
+      allow delete: if hasPermission('invoices', 'delete');
+    }
+
+    match /payments/{paymentId} {
+      allow read: if isStaff();
+      allow create: if hasPermission('payments', 'create');
+      allow update: if hasPermission('payments', 'update');
+      allow delete: if hasPermission('payments', 'delete');
+    }
+
+    match /deliveries/{deliveryId} {
+      allow read: if isStaff();
+      allow create: if hasPermission('deliveries', 'create');
+      allow update: if hasPermission('deliveries', 'update');
+      allow delete: if hasPermission('deliveries', 'delete');
+    }
+
+    match /calls/{callId} {
+      allow read: if isStaff();
+      allow create: if hasPermission('calls', 'create');
+      allow update: if hasPermission('calls', 'update');
+      allow delete: if hasPermission('calls', 'delete');
+    }
+
+    match /followUps/{followUpId} {
+      allow read: if isStaff();
+      allow create: if hasPermission('followUps', 'create');
+      allow update: if hasPermission('followUps', 'update');
+      allow delete: if hasPermission('followUps', 'delete');
+    }
+
+    match /stockAdjustments/{adjustmentId} {
+      allow read: if isStaff();
+      allow create: if hasPermission('stockAdjustments', 'create');
+      allow delete: if hasPermission('stockAdjustments', 'delete');
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isStaff();
+      allow create: if isAdminOrManager();
+      allow update: if request.auth.uid == resource.data.userId || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /activityLogs/{logId} {
+      allow read: if isStaff();
+      allow create: if isAuthenticated();
+      allow delete: if isAdmin();
+    }
+
+    match /purchaseSuggestions/{suggestionId} {
+      allow read: if isStaff();
+      allow create: if isAdminOrManager();
+      allow update: if isAdminOrManager();
+      allow delete: if isAdmin();
+    }
+
+    match /settings/{settingId} {
+      allow read: if isStaff();
+      allow write: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,40 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated()
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'Admin';
+    }
+
+    match /jobcard-photos/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+      allow delete: if isAdmin();
+    }
+
+    match /inventory-images/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isStoreKeeper() || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /company-logo/{fileName} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /invoices/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
